@@ -170,6 +170,7 @@ def get_crystals_list(
 def smact_validity(comp, count,
                    use_pauling_test=True,
                    include_alloys=True):
+    # test if it is valid in electrical chemistry
     elem_symbols = tuple([chemical_symbols[elem] for elem in comp])
     space = smact.element_dictionary(elem_symbols)
     smact_elems = [e[1] for e in space.items()]
@@ -212,6 +213,7 @@ def smact_validity(comp, count,
 
 
 def structure_validity(crystal, cutoff=0.5):
+    # avoid atom distance too close and avoid volume too small
     dist_mat = crystal.distance_matrix
     # Pad diagonal with a large number
     dist_mat = dist_mat + np.diag(
@@ -278,6 +280,7 @@ def filter_fps(struc_fps, comp_fps):
 
 def compute_cov(crys, gt_crys,
                 struc_cutoff, comp_cutoff, num_gen_crystals=None):
+    # compute the recall and precision by calculating the distance of fingerprints
     struc_fps = [c.struct_fp for c in crys]
     comp_fps = [c.comp_fp for c in crys]
     gt_struc_fps = [c.struct_fp for c in gt_crys]
@@ -299,7 +302,7 @@ def compute_cov(crys, gt_crys,
     gt_struc_fps = np.array(gt_struc_fps)
     comp_fps = np.array(comp_fps)
     gt_comp_fps = np.array(gt_comp_fps)
-
+    # fps:fingerprints
     struc_pdist = cdist(struc_fps, gt_struc_fps)
     comp_pdist = cdist(comp_fps, gt_comp_fps)
 

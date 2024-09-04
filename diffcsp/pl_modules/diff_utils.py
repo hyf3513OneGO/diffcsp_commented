@@ -33,6 +33,7 @@ def p_wrapped_normal(x, sigma, N=10, T=1.0):
     return p_
 
 def d_log_p_wrapped_normal(x, sigma, N=10, T=1.0):
+    # N is the accumulate times(it suppose to be infinite however it's approximated as 10)
     p_ = 0
     for i in range(-N, N + 1):
         p_ += (x + T * i) / sigma ** 2 * torch.exp(-(x + T * i) ** 2 / 2 / sigma ** 2)
@@ -100,6 +101,8 @@ class SigmaScheduler(nn.Module):
         self.timesteps = timesteps
         self.sigma_begin = sigma_begin
         self.sigma_end = sigma_end
+        # Not as same as the exponential scheduler in the paper
+        # sigmas = sigma_1 * ((sigma_T / sigma_1) ** ((torch.arange(timesteps).float()) / (timesteps - 1)))
         sigmas = torch.FloatTensor(np.exp(np.linspace(np.log(sigma_begin), np.log(sigma_end), timesteps)))
 
         sigmas_norm_ = sigma_norm(sigmas)

@@ -13,6 +13,8 @@ from diffcsp.common.data_utils import lattice_params_to_matrix_torch, get_pbc_di
 MAX_ATOMIC_NUM=100
 
 class SinusoidsEmbedding(nn.Module):
+    # extract SinusoidsEmbedding for any given n_frequencies 
+    # [N,3]->[N,n_space*n_frequencies*2]
     def __init__(self, n_frequencies = 10, n_space = 3):
         super().__init__()
         self.n_frequencies = n_frequencies
@@ -67,23 +69,25 @@ class CSPLayer(nn.Module):
             frac_diff = (xj - xi) % 1.
         if self.dis_emb is not None:
             frac_diff = self.dis_emb(frac_diff)
+        # inner product of lattice matrix captures the geometric info of crystal
         if self.ip:
-            lattice_ips = lattices @ lattices.transpose(-1,-2)
+            lattice_ips = lattices @ lattices.transpose(-1,-2) # [3,3]@[3.3]->[3,3]
         else:
             lattice_ips = lattices
-        lattice_ips_flatten = lattice_ips.view(-1, 9)
+        lattice_ips_flatten = lattice_ips.view(-1, 9) # 3 latices->3*3=9
         lattice_ips_flatten_edges = lattice_ips_flatten[edge2graph]
         edges_input = torch.cat([hi, hj, lattice_ips_flatten_edges, frac_diff], dim=1)
         edge_features = self.edge_mlp(edges_input)
         return edge_features
 
     def node_model(self, node_features, edge_features, edge_index):
-
+        # Aggregate the information from connected edges,edge_index[0]->source node
+        # As it is an undirected graph,each node can get aggregation info
         agg = scatter(edge_features, edge_index[0], dim = 0, reduce='mean', dim_size=node_features.shape[0])
         agg = torch.cat([node_features, agg], dim = 1)
         out = self.node_mlp(agg)
         return out
-
+    # For GNN info is actually stored on nodes,edge features are calculated each iter
     def forward(self, node_features, frac_coords, lattices, edge_index, edge2graph, frac_diff = None):
 
         node_input = node_features
@@ -261,7 +265,7 @@ class CSPNet(nn.Module):
             
 
     def forward(self, t, atom_types, frac_coords, lattices, num_atoms, node2graph):
-
+        # node2graph is the map of the nodeID -> graphID(the mini batch mechanism of pytorch_geometric)
         edges, frac_diff = self.gen_edges(num_atoms, frac_coords, lattices, node2graph)
         edge2graph = node2graph[edges[0]]
         if self.smooth:
@@ -296,3 +300,6 @@ class CSPNet(nn.Module):
 
         return lattice_out, coord_out
 
+if __name__ == '__main__':
+    sinEmbLayer = SinusoidsEmbedding()
+    print(sinEmbLayer(torch.randn(1,3,1)).shape)

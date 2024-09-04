@@ -78,17 +78,15 @@ class CSPDiffusion(BaseModule):
         self.keep_coords = self.hparams.cost_coord < 1e-5
 
     def forward(self, batch):
-
         batch_size = batch.num_graphs
         times = self.beta_scheduler.uniform_sample_t(batch_size, self.device)
         time_emb = self.time_embedding(times)
-
         alphas_cumprod = self.beta_scheduler.alphas_cumprod[times]
         beta = self.beta_scheduler.betas[times]
 
         c0 = torch.sqrt(alphas_cumprod)
         c1 = torch.sqrt(1. - alphas_cumprod)
-
+        # Use precalculated {time_step:sigma_t} dict
         sigmas = self.sigma_scheduler.sigmas[times]
         sigmas_norm = self.sigma_scheduler.sigmas_norm[times]
 
@@ -96,10 +94,13 @@ class CSPDiffusion(BaseModule):
         frac_coords = batch.frac_coords
 
         rand_l, rand_x = torch.randn_like(lattices), torch.randn_like(frac_coords)
-
+        # lattice_noised = c0*lattice_label+c1*gaussian_noise
+        # c0 = sqrt(a_t) c1 = sqrt(1-a_t)
         input_lattice = c0[:, None, None] * lattices + c1[:, None, None] * rand_l
         sigmas_per_atom = sigmas.repeat_interleave(batch.num_atoms)[:, None]
         sigmas_norm_per_atom = sigmas_norm.repeat_interleave(batch.num_atoms)[:, None]
+        # frac_coords_noised = (frac_coords+sigmas_per_atom*gaussian_noise)%1
+        # Wrapped normal distribution & Exponential sigma scheduler
         input_frac_coords = (frac_coords + sigmas_per_atom * rand_x) % 1.
 
 
@@ -108,18 +109,18 @@ class CSPDiffusion(BaseModule):
 
         if self.keep_lattice:
             input_lattice = lattices
-
+        # To train a diffusion model is to train the denoiser
         pred_l, pred_x = self.decoder(time_emb, batch.atom_types, input_frac_coords, input_lattice, batch.num_atoms, batch.batch)
-
+        # proposition2:if epsilon is a periodical then the distribution of F0 is also periodical
+        # score matching based diffusion objective function:derivative of log(F_noised)
         tar_x = d_log_p_wrapped_normal(sigmas_per_atom * rand_x, sigmas_per_atom) / torch.sqrt(sigmas_norm_per_atom)
-
+        # predict the noise we add before
         loss_lattice = F.mse_loss(pred_l, rand_l)
         loss_coord = F.mse_loss(pred_x, tar_x)
 
         loss = (
             self.hparams.cost_lattice * loss_lattice +
             self.hparams.cost_coord * loss_coord)
-
         return {
             'loss' : loss,
             'loss_lattice' : loss_lattice,
@@ -174,6 +175,7 @@ class CSPDiffusion(BaseModule):
 
             if self.keep_lattice:
                 l_t = l_T
+            # todo: read the article "Score-Based Generative Modeling through Stochastic Differential Equations"
 
             # PC-sampling refers to "Score-Based Generative Modeling through Stochastic Differential Equations"
             # Origin code : https://github.com/yang-song/score_sde/blob/main/sampling.py
@@ -185,12 +187,12 @@ class CSPDiffusion(BaseModule):
 
             step_size = step_lr * (sigma_x / self.sigma_scheduler.sigma_begin) ** 2
             # step_size = step_lr / (sigma_norm * (self.sigma_scheduler.sigma_begin) ** 2)
-            std_x = torch.sqrt(2 * step_size)
+            std_x = torch.sqrt(2 * step_size) # Euler-Maruyama method
 
             pred_l, pred_x = self.decoder(time_emb, batch.atom_types, x_t, l_t, batch.num_atoms, batch.batch)
 
             pred_x = pred_x * torch.sqrt(sigma_norm)
-
+            # denoise by a smaller step(0.5step): x_t-0.5 = x_t(noised) - step_size*pred_noise + rand_noise*std_x
             x_t_minus_05 = x_t - step_size * pred_x + std_x * rand_x if not self.keep_coords else x_t
 
             l_t_minus_05 = l_t if not self.keep_lattice else l_t

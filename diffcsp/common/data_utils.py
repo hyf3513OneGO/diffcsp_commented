@@ -172,6 +172,7 @@ def get_symmetry_info(crystal, tol=0.01):
 
 def build_crystal_graph(crystal, graph_method='crystalnn'):
     """
+    build graph from cif info and convert it to a Undirected Graph
     """
 
     if graph_method == 'crystalnn':
@@ -209,7 +210,8 @@ def build_crystal_graph(crystal, graph_method='crystalnn'):
     edge_indices = np.array(edge_indices)
     to_jimages = np.array(to_jimages)
     num_atoms = atom_types.shape[0]
-
+    # to_jimages is the count of the edges which go across two crystal cells(due to the Periodic Boundary Conditions, PBC)
+    # 0->no cross,1->positive direction cross,-1->negative direction cross
     return frac_coords, atom_types, lengths, angles, edge_indices, to_jimages, num_atoms
 
 
@@ -230,6 +232,7 @@ def abs_cap(val, max_abs_val=1):
 
 def lattice_params_to_matrix(a, b, c, alpha, beta, gamma):
     """Converts lattice from abc, angles to matrix.
+    for verifying if the build_crystal_graph from cif is working correctly.
     https://github.com/materialsproject/pymatgen/blob/b789d74639aa851d7e5ee427a765d9fd5a8d1079/pymatgen/core/lattice.py#L311
     """
     angles_r = np.radians([alpha, beta, gamma])
@@ -251,6 +254,7 @@ def lattice_params_to_matrix(a, b, c, alpha, beta, gamma):
     return np.array([vector_a, vector_b, vector_c])
 
 
+# todo:infer why the function design like this
 def lattice_params_to_matrix_torch(lengths, angles):
     """Batched torch version to compute lattice matrix from params.
 
@@ -1342,3 +1346,5 @@ class StandardScaler:
             np.isnan(transformed_with_nan), self.replace_nan_token, transformed_with_nan)
 
         return transformed_with_none
+if __name__=="__main__":
+    pass

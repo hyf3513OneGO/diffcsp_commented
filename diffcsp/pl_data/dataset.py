@@ -34,7 +34,7 @@ class CrystDataset(Dataset):
         self.tolerance = tolerance
 
         self.preprocess(save_path, preprocess_workers, prop)
-
+        # normalize the lattice length by length = length /float(num_atoms)**(1/3)
         add_scaled_lattice_prop(self.cached_data, lattice_scale_method)
         self.lattice_scaler = None
         self.scaler = None
@@ -43,6 +43,9 @@ class CrystDataset(Dataset):
         if os.path.exists(save_path):
             self.cached_data = torch.load(save_path)
         else:
+            # spacegroup,mp_id,cif,
+            # graph_arrays[frac_coords, atom_types, lengths, angles, edge_indices, to_jimages, num_atoms],
+            # energy_per_atom,scaled_lattice[scaled_X,scaled_Y,scaled_Z,angle_alpha,angle_beta,alpha_gamma]
             cached_data = preprocess(
             self.path,
             preprocess_workers,
@@ -110,7 +113,6 @@ class TensorCrystDataset(Dataset):
         self.primitive = primitive
         self.graph_method = graph_method
         self.lattice_scale_method = lattice_scale_method
-
         self.cached_data = preprocess_tensors(
             crystal_array_list,
             niggli=self.niggli,
@@ -165,7 +167,6 @@ def main(cfg: omegaconf.DictConfig):
     scaler = get_scaler_from_data_list(
         dataset.cached_data,
         key=dataset.prop)
-
     dataset.lattice_scaler = lattice_scaler
     dataset.scaler = scaler
     data_list = [dataset[i] for i in range(len(dataset))]

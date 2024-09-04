@@ -295,11 +295,13 @@ class OptEval(object):
         if len(valid_crys) == 0:
             sr_5, sr_10, sr_15 = 0, 0, 0
         else:
+            # predict the energy for the generated structure
             pred_props = prop_model_eval(self.eval_model_name, [
                                          c.dict for c in valid_crys])
             percentiles = Percentiles[self.eval_model_name]
             props[valid_x, valid_y] = pred_props
             best_props = props.min(axis=0)
+            # percentile indicates the energy percentile in true crystals
             sr_5 = (best_props <= percentiles[0]).mean()
             sr_10 = (best_props <= percentiles[1]).mean()
             sr_15 = (best_props <= percentiles[2]).mean()
