@@ -46,6 +46,7 @@ class CrystDataset(Dataset):
             # spacegroup,mp_id,cif,
             # graph_arrays[frac_coords, atom_types, lengths, angles, edge_indices, to_jimages, num_atoms],
             # energy_per_atom,scaled_lattice[scaled_X,scaled_Y,scaled_Z,angle_alpha,angle_beta,alpha_gamma]
+            # to_jimages[x,y,z] eg:[1,0,1] means that atom is in the positive x,same y,positive z direction
             cached_data = preprocess(
             self.path,
             preprocess_workers,

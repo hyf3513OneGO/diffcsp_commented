@@ -221,8 +221,8 @@ class GenEval(object):
                 f'not enough valid crystals in the predicted set: {len(valid_crys)}/{n_samples}')
 
     def get_validity(self):
-        comp_valid = np.array([c.comp_valid for c in self.crys]).mean()
-        struct_valid = np.array([c.struct_valid for c in self.crys]).mean()
+        comp_valid = np.array([c.comp_valid for c in self.crys]).mean() # electroneutrality
+        struct_valid = np.array([c.struct_valid for c in self.crys]).mean()# 0.5A distance between atoms
         valid = np.array([c.valid for c in self.crys]).mean()
         return {'comp_valid': comp_valid,
                 'struct_valid': struct_valid,

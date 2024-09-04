@@ -306,8 +306,8 @@ def compute_cov(crys, gt_crys,
     struc_pdist = cdist(struc_fps, gt_struc_fps)
     comp_pdist = cdist(comp_fps, gt_comp_fps)
 
-    struc_recall_dist = struc_pdist.min(axis=0)
-    struc_precision_dist = struc_pdist.min(axis=1)
+    struc_recall_dist = struc_pdist.min(axis=0) # for each real crystal find the nearest generated one and get its distance
+    struc_precision_dist = struc_pdist.min(axis=1) #for each generated crystal find the nearest real and get its distance
     comp_recall_dist = comp_pdist.min(axis=0)
     comp_precision_dist = comp_pdist.min(axis=1)
 

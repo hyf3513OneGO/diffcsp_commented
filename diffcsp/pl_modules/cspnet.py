@@ -181,6 +181,8 @@ class CSPNet(nn.Module):
         # Generate mask
         mask_sep_atoms = edge_index[0] < edge_index[1]
         # Distinguish edges between the same (periodic) atom by ordering the cells
+        # Q: Why do we have edge_index[0] == edge_index[1] ?
+        # A: One atom can be placed in two adjacent cells which is caused by PBC (Periodical Boundary Conditions)
         cell_earlier = (
             (cell_offsets[:, 0] < 0)
             | ((cell_offsets[:, 0] == 0) & (cell_offsets[:, 1] < 0))
@@ -191,10 +193,11 @@ class CSPNet(nn.Module):
             )
         )
         mask_same_atoms = edge_index[0] == edge_index[1]
-        mask_same_atoms &= cell_earlier
+        mask_same_atoms &= cell_earlier # only consider the same atoms in the previous cell(to_jimages[<=0,<=0,<=0])
         mask = mask_sep_atoms | mask_same_atoms
 
         # Mask out counter-edges
+        # We only consider the 1.sep_atoms(only i<j means one side) 2.same_atom(only to_jimages[<=0,<=0,<=0]) so that there is no repeat edges
         edge_index_new = edge_index[mask[None, :].expand(2, -1)].view(2, -1)
 
         # Concatenate counter-edges after normal edges
